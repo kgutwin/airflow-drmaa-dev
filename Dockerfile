@@ -1,16 +1,14 @@
-# VERSION 1.7.0
-# AUTHOR: Camil Blanaru
+# VERSION 1.8.1
 # DESCRIPTION: Basic Airflow container
-# SOURCE: https://github.com/camilb/docker-airflow
-# FORKED from https://github.com/puckel/docker-airflow
+# FORKED from https://github.com/camilb/docker-airflow
 
 FROM debian:jessie
-MAINTAINER Camil Blanaru
 
 # Never prompts the user for choices on installation/configuration of packages
 ENV DEBIAN_FRONTEND noninteractive
 ENV TERM linux
-ENV AIRFLOW_VERSION 1.7.0
+ENV AIRFLOW_PKG airflow
+ENV AIRFLOW_VERSION 1.8.0
 ENV AIRFLOW_HOME /usr/local/airflow
 
 # Define en_US.
@@ -29,11 +27,12 @@ RUN echo "deb http://http.debian.net/debian jessie-backports main" >/etc/apt/sou
     curl \
     python-pip \
     python-dev \
-    libmysqlclient-dev \
+    mysql-client libmysqlclient-dev \
     libkrb5-dev \
     libsasl2-dev \
     libssl-dev \
     libffi-dev \
+    libxml2-dev libxslt-dev libz-dev \
     build-essential \
     locales \
     && apt-get install -yqq -t jessie-backports python-requests \
@@ -46,14 +45,13 @@ RUN echo "deb http://http.debian.net/debian jessie-backports main" >/etc/apt/sou
     && pip install pyOpenSSL \
     && pip install ndg-httpsclient \
     && pip install pyasn1 \
-    && pip install airflow==${AIRFLOW_VERSION} \
-    && pip install airflow[celery]==${AIRFLOW_VERSION} \
-    && pip install airflow[mysql]==${AIRFLOW_VERSION} \
-    && pip install airflow[async]==${AIRFLOW_VERSION} \
-    && pip install airflow[ldap]==${AIRFLOW_VERSION} \
-    && pip install airflow[password]==${AIRFLOW_VERSION} \
-    && pip install airflow[s3]==${AIRFLOW_VERSION} \
-    && pip install airflow[slack]==${AIRFLOW_VERSION} \
+    && pip install ${AIRFLOW_PKG}==${AIRFLOW_VERSION} \
+    && pip install ${AIRFLOW_PKG}[mysql]==${AIRFLOW_VERSION} \
+    && pip install ${AIRFLOW_PKG}[async]==${AIRFLOW_VERSION} \
+    && pip install ${AIRFLOW_PKG}[ldap]==${AIRFLOW_VERSION} \
+    && pip install ${AIRFLOW_PKG}[password]==${AIRFLOW_VERSION} \
+    && pip install ${AIRFLOW_PKG}[s3]==${AIRFLOW_VERSION} \
+    && pip install ${AIRFLOW_PKG}[slack]==${AIRFLOW_VERSION} \
     && apt-get remove --purge -yqq build-essential python-pip python-dev libmysqlclient-dev libkrb5-dev libsasl2-dev libssl-dev libffi-dev \
     && apt-get clean \
     && rm -rf \
@@ -66,6 +64,7 @@ RUN echo "deb http://http.debian.net/debian jessie-backports main" >/etc/apt/sou
 
 ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint.sh
 ADD config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
+ADD dags/smoke_test.py ${AIRFLOW_HOME}/smoke_test.py
 
 RUN \
     chown -R airflow: ${AIRFLOW_HOME} \

@@ -1,73 +1,53 @@
-mysql:
-    image: tutum/mysql
-    restart: always
-    ports:
-        - "3306:3306"
-    environment:
-        - MYSQL_USER=airflow
-        - MYSQL_PASS=airflow
-        - ON_CREATE_DB=airflow
+version: '3.0'
 
-rabbitmq:
-    image: rabbitmq:3-management
-    restart: always
-    ports:
-        - "15672:15672"
-        - "5672:5672"
-    environment:
-        - RABBITMQ_DEFAULT_USER=airflow
-        - RABBITMQ_DEFAULT_PASS=airflow
-        - RABBITMQ_DEFAULT_VHOST=airflow
+services:
+    mysql:
+        image: mysql
+        ports:
+            - "3306:3306"
+        environment:
+            - MYSQL_ROOT_PASSWORD=secret
+            - MYSQL_USER=airflow
+            - MYSQL_PASSWORD=airflow
+            - MYSQL_DATABASE=airflow
 
-webserver:
-    image: camil/airflow
-    restart: always
-    volumes:
-         - ~/docker-airflow/dags:/usr/local/airflow/dags
-    environment:
-        - AIRFLOW_HOME=/usr/local/airflow
-    ports:
-        - "8080:8080"
-    links:
-        - mysql:mysql
-        - rabbitmq:rabbitmq
-        - worker:worker
-        - scheduler:scheduler
-    command: webserver
+    slurm:
+        image: giovtorres/docker-centos7-slurm
+        hostname: ernie
+        volumes:
+            #- data-volume:/usr/local/airflow/dags
+            - ~/docker-airflow/dags:/usr/local/airflow/dags
+            - ~/docker-airflow/logs:/usr/local/airflow/logs
+        command: sleep 9999999
 
-flower:
-    image: camil/airflow
-    restart: always
-    environment:
-        - AIRFLOW_HOME=/usr/local/airflow
-    ports:
-        - "5555:5555"
-    links:
-        - rabbitmq:rabbitmq
-    command: flower
+    webserver:
+        image: kgutwin/airflow-drmaa-dev
+        volumes:
+            #- data-volume:/usr/local/airflow/dags
+            - ~/docker-airflow/dags:/usr/local/airflow/dags
+            - ~/docker-airflow/logs:/usr/local/airflow/logs
+        environment:
+            - AIRFLOW_HOME=/usr/local/airflow
+        ports:
+            - "8080:8080"
+        links:
+            - mysql:mysql
+            - slurm:ernie
+            - scheduler:scheduler
+        command: webserver
 
-scheduler:
-    image: camil/airflow
-    restart: always
-    volumes:
-        - ~/docker-airflow/dags:/usr/local/airflow/dags
-    environment:
-        - AIRFLOW_HOME=/usr/local/airflow
-    links:
-        - mysql:mysql
-        - rabbitmq:rabbitmq
-    command: scheduler
+    scheduler:
+        image: kgutwin/airflow-drmaa-dev
+        volumes:
+            #- data-volume:/usr/local/airflow/dags
+            - ~/docker-airflow/dags:/usr/local/airflow/dags
+            - ~/docker-airflow/logs:/usr/local/airflow/logs
+        environment:
+            - AIRFLOW_HOME=/usr/local/airflow
+        links:
+            - mysql:mysql
+            - slurm:ernie
+        command: scheduler
 
-worker:
-    image: camil/airflow
-    restart: always
-    volumes:
-        - ~/docker-airflow/dags:/usr/local/airflow/dags
-    environment:
-        - AIRFLOW_HOME=/usr/local/airflow
-    ports:
-        - "8793:8793"
-    links:
-        - mysql:mysql
-        - rabbitmq:rabbitmq
-    command: worker
+volumes:
+    data-volume:
