@@ -62,6 +62,29 @@ RUN echo "deb http://http.debian.net/debian jessie-backports main" >/etc/apt/sou
     /usr/share/doc \
     /usr/share/doc-base
 
+ENV SLURM_DOWNLOAD_URL https://www.schedmd.com/downloads/latest/slurm-17.02.5.tar.bz2
+
+RUN apt-get update -y && apt-get install -y libmunge-dev munge \
+    && mkdir /var/run/munge && chown munge: /var/run/munge \
+    && useradd -u 997 slurm \
+    && curl -o slurm.tar.bz2 "$SLURM_DOWNLOAD_URL" \
+    && mkdir -p /usr/local/src/slurm \
+    && tar jxvf slurm.tar.bz2 -C /usr/local/src/slurm --strip-components=1 \
+    && rm slurm.tar.bz2 && cd /usr/local/src/slurm \
+    && ./configure --prefix=/usr --sysconfdir=/etc/slurm \
+    && make && make install \
+    && mkdir -p /etc/slurm \    
+    && apt-get clean \
+    && rm -rf \
+    /var/lib/apt/lists/* \
+    /tmp/* \
+    /var/tmp/* \
+    /usr/share/man \
+    /usr/share/doc \
+    /usr/share/doc-base
+
+ADD config/slurm.conf /etc/slurm/slurm.conf
+
 ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint.sh
 ADD config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 ADD dags/smoke_test.py ${AIRFLOW_HOME}/smoke_test.py
@@ -72,6 +95,5 @@ RUN \
 
 EXPOSE 8080 5555 8793
 
-USER airflow
 WORKDIR ${AIRFLOW_HOME}
 ENTRYPOINT ["./entrypoint.sh"]

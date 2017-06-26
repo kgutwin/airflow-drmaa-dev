@@ -18,6 +18,8 @@ services:
             #- data-volume:/usr/local/airflow/dags
             - ~/docker-airflow/dags:/usr/local/airflow/dags
             - ~/docker-airflow/logs:/usr/local/airflow/logs
+            - munge-key:/etc/munge
+            - slurm-shared:/shared
         command: sleep 9999999
 
     webserver:
@@ -26,6 +28,8 @@ services:
             #- data-volume:/usr/local/airflow/dags
             - ~/docker-airflow/dags:/usr/local/airflow/dags
             - ~/docker-airflow/logs:/usr/local/airflow/logs
+            - munge-key:/root/munge-key
+            - slurm-shared:/shared
         environment:
             - AIRFLOW_HOME=/usr/local/airflow
         ports:
@@ -42,6 +46,8 @@ services:
             #- data-volume:/usr/local/airflow/dags
             - ~/docker-airflow/dags:/usr/local/airflow/dags
             - ~/docker-airflow/logs:/usr/local/airflow/logs
+            - munge-key:/root/munge-key
+            - slurm-shared:/shared
         environment:
             - AIRFLOW_HOME=/usr/local/airflow
         links:
@@ -51,3 +57,5 @@ services:
 
 volumes:
     data-volume:
+    munge-key:
+    slurm-shared:
