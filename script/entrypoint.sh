@@ -10,12 +10,23 @@ MYSQL_DATABASE="airflow"
 FERNET_KEY=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print FERNET_KEY")
 
 # Generate Fernet key
-sed -i "s/{FERNET_KEY}/${FERNET_KEY}/" $AIRFLOW_HOME/airflow.cfg
+sed -i "s/\\\$FERNET_KEY/${FERNET_KEY}/" $AIRFLOW_HOME/airflow.cfg
 
 # Start munged
 if [[ -f /root/munge-key/munge.key ]]; then
     cat /root/munge-key/munge.key > /etc/munge/munge.key
     runuser -u munge munged
+fi
+
+# try building Airflow from source if needed
+if [[ -f /usr/local/airflow/src/setup.py ]]; then
+    pip uninstall -y airflow flask-wtf &
+    mkdir -p /usr/local/airflow/build
+    pushd /usr/local/airflow/build
+    cp -r /usr/local/airflow/src/* /usr/local/airflow/build
+    wait
+    python setup.py install || exit 1
+    popd
 fi
 
 mysql_ready() {

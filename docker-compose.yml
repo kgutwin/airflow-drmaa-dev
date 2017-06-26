@@ -30,6 +30,7 @@ services:
             - ~/docker-airflow/logs:/usr/local/airflow/logs
             - munge-key:/root/munge-key
             - slurm-shared:/shared
+            - ~/github/incubator-airflow:/usr/local/airflow/src
         environment:
             - AIRFLOW_HOME=/usr/local/airflow
         ports:
@@ -48,6 +49,7 @@ services:
             - ~/docker-airflow/logs:/usr/local/airflow/logs
             - munge-key:/root/munge-key
             - slurm-shared:/shared
+            - ~/github/incubator-airflow:/usr/local/airflow/src
         environment:
             - AIRFLOW_HOME=/usr/local/airflow
         links:

@@ -25,7 +25,6 @@ RUN echo "deb http://http.debian.net/debian jessie-backports main" >/etc/apt/sou
     apt-utils\
     netcat \
     curl \
-    python-pip \
     python-dev \
     mysql-client libmysqlclient-dev \
     libkrb5-dev \
@@ -35,6 +34,8 @@ RUN echo "deb http://http.debian.net/debian jessie-backports main" >/etc/apt/sou
     libxml2-dev libxslt-dev libz-dev \
     build-essential \
     locales \
+    && curl -k -O https://bootstrap.pypa.io/get-pip.py && python get-pip.py \
+    && pip install setuptools \
     && apt-get install -yqq -t jessie-backports python-requests \
     && sed -i 's/^# en_US.UTF-8 UTF-8$/en_US.UTF-8 UTF-8/g' /etc/locale.gen \
     && locale-gen \
@@ -52,7 +53,7 @@ RUN echo "deb http://http.debian.net/debian jessie-backports main" >/etc/apt/sou
     && pip install ${AIRFLOW_PKG}[password]==${AIRFLOW_VERSION} \
     && pip install ${AIRFLOW_PKG}[s3]==${AIRFLOW_VERSION} \
     && pip install ${AIRFLOW_PKG}[slack]==${AIRFLOW_VERSION} \
-    && apt-get remove --purge -yqq build-essential python-pip python-dev libmysqlclient-dev libkrb5-dev libsasl2-dev libssl-dev libffi-dev \
+    && apt-get remove --purge -yqq build-essential python-dev libmysqlclient-dev libkrb5-dev libsasl2-dev libssl-dev libffi-dev \
     && apt-get clean \
     && rm -rf \
     /var/lib/apt/lists/* \
