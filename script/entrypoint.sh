@@ -7,6 +7,7 @@ MYSQL_PORT="3306"
 MYSQL_USER="airflow"
 MYSQL_PASSWORD="airflow"
 MYSQL_DATABASE="airflow"
+SLURM_HOST="ernie"
 FERNET_KEY=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print FERNET_KEY")
 
 # Generate Fernet key
@@ -20,12 +21,9 @@ fi
 
 # try building Airflow from source if needed
 if [[ -f /usr/local/airflow/src/setup.py ]]; then
-    pip uninstall -y airflow flask-wtf &
-    mkdir -p /usr/local/airflow/build
-    pushd /usr/local/airflow/build
-    cp -r /usr/local/airflow/src/* /usr/local/airflow/build
-    wait
-    python setup.py install || exit 1
+    pushd /usr/local/airflow/src
+    pip uninstall -y airflow flask-wtf
+    pip install -e .[drmaa] || exit 1
     popd
 fi
 
@@ -61,20 +59,21 @@ if [ "$@" = "webserver" ] || [ "$@" = "worker" ] || [ "$@" = "scheduler" ] ; the
 fi
 
 # wait for SLURM
-i=0
-while ! squeue; do
-  i=`expr $i + 1`
-  if [ $i -ge $TRY_LOOP ]; then
-    echo "$(date) - SLURM still not reachable, giving up"
-    exit 1
-  fi
-  echo "$(date) - waiting for SLURM... $i/$TRY_LOOP"
-  sleep 5
-done
+if python -c "import socket; socket.gethostbyname('$SLURM_HOST')" 2>/dev/null; then
+  i=0
+  while ! squeue; do
+    i=`expr $i + 1`
+    if [ $i -ge $TRY_LOOP ]; then
+      echo "$(date) - SLURM still not reachable, giving up"
+      exit 1
+    fi
+    echo "$(date) - waiting for SLURM... $i/$TRY_LOOP"
+    sleep 5
+  done
 
-# Create the airflow user in the SLURM container
-AIRFLOW_UID=$(id -u airflow)
-sbatch --workdir=/ --job-name create-airflow-user <<EOF
+  # Create the airflow user in the SLURM container
+  AIRFLOW_UID=$(id -u airflow)
+  sbatch --workdir=/ --job-name create-airflow-user <<EOF
 #!/bin/sh
 set -v
 if ! id airflow; then
@@ -83,5 +82,12 @@ if ! id airflow; then
     chown airflow: /usr/local/airflow
 fi
 EOF
+else
+  echo "$(date) - SLURM host not found, skipping"
+fi
 
-runuser -u airflow $CMD "$@"
+if [ "$@" = "bash" ]; then
+  exec /bin/bash
+else
+  runuser -u airflow $CMD "$@"
+fi
