@@ -12,15 +12,18 @@ services:
             - MYSQL_DATABASE=airflow
 
     slurm:
-        image: giovtorres/docker-centos7-slurm
-        hostname: ernie
+        image: kgutwin/airflow-drmaa-dev
+        hostname: slurm-master
         volumes:
             #- data-volume:/usr/local/airflow/dags
             - ~/docker-airflow/dags:/usr/local/airflow/dags
             - ~/docker-airflow/logs:/usr/local/airflow/logs
             - munge-key:/etc/munge
             - slurm-shared:/shared
-        command: sleep 9999999
+            - ~/github/incubator-airflow:/usr/local/airflow/src
+        environment:
+            - AIRFLOW_HOME=/usr/local/airflow
+        command: slurm-master
 
     webserver:
         image: kgutwin/airflow-drmaa-dev
@@ -37,7 +40,7 @@ services:
             - "8080:8080"
         links:
             - mysql:mysql
-            - slurm:ernie
+            - slurm:slurm-master
             - scheduler:scheduler
         command: webserver
 
@@ -54,7 +57,7 @@ services:
             - AIRFLOW_HOME=/usr/local/airflow
         links:
             - mysql:mysql
-            - slurm:ernie
+            - slurm:slurm-master
         command: scheduler
 
 volumes:

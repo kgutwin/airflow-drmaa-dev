@@ -77,7 +77,10 @@ RUN apt-get update -y && apt-get install -y libmunge-dev munge \
     && rm slurm.tar.bz2 && cd /usr/local/src/slurm \
     && ./configure --prefix=/usr --sysconfdir=/etc/slurm \
     && make && make install \
-    && mkdir -p /etc/slurm \
+    && mkdir -p /etc/slurm /var/log/slurm /var/lib/slurmd /var/run/slurmd \
+    && mkdir -p /var/spool/slurmd \
+    && chown slurm: /var/lib/slurmd /var/run/slurmd /var/spool/slurmd \
+    && chown slurm: /var/log/slurm \
     && curl -o slurm-drmaa.tar.gz "$SLURM_DRMAA_DOWNLOAD_URL" \
     && mkdir -p /usr/local/src/slurm-drmaa \
     && tar zxvf slurm-drmaa.tar.gz -C /usr/local/src/slurm-drmaa --strip-components=1 \

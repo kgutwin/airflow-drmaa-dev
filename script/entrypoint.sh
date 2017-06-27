@@ -7,7 +7,7 @@ MYSQL_PORT="3306"
 MYSQL_USER="airflow"
 MYSQL_PASSWORD="airflow"
 MYSQL_DATABASE="airflow"
-SLURM_HOST="ernie"
+SLURM_HOST="slurm-master"
 FERNET_KEY=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print FERNET_KEY")
 
 # Generate Fernet key
@@ -16,8 +16,8 @@ sed -i "s/\\\$FERNET_KEY/${FERNET_KEY}/" $AIRFLOW_HOME/airflow.cfg
 # Start munged
 if [[ -f /root/munge-key/munge.key ]]; then
     cat /root/munge-key/munge.key > /etc/munge/munge.key
-    runuser -u munge munged
 fi
+runuser -u munge munged
 
 # try building Airflow from source if needed
 if [[ -f /usr/local/airflow/src/setup.py ]]; then
@@ -59,32 +59,20 @@ if [ "$@" = "webserver" ] || [ "$@" = "worker" ] || [ "$@" = "scheduler" ] ; the
 fi
 
 # wait for SLURM
-if python -c "import socket; socket.gethostbyname('$SLURM_HOST')" 2>/dev/null; then
-  i=0
-  while ! squeue; do
-    i=`expr $i + 1`
-    if [ $i -ge $TRY_LOOP ]; then
-      echo "$(date) - SLURM still not reachable, giving up"
-      exit 1
-    fi
-    echo "$(date) - waiting for SLURM... $i/$TRY_LOOP"
-    sleep 5
-  done
-
-  # Create the airflow user in the SLURM container
-  AIRFLOW_UID=$(id -u airflow)
-  sbatch --workdir=/ --job-name create-airflow-user <<EOF
-#!/bin/sh
-set -v
-if ! id airflow; then
-    useradd -u $AIRFLOW_UID airflow
-    mkdir -p /usr/local/airflow
-    chown airflow: /usr/local/airflow
-fi
-EOF
-else
-  echo "$(date) - SLURM host not found, skipping"
-fi
+#if python -c "import socket; socket.gethostbyname('$SLURM_HOST')" 2>/dev/null; then
+#  i=0
+#  while ! squeue; do
+#    i=`expr $i + 1`
+#    if [ $i -ge $TRY_LOOP ]; then
+#      echo "$(date) - SLURM still not reachable, giving up"
+#      exit 1
+#    fi
+#    echo "$(date) - waiting for SLURM... $i/$TRY_LOOP"
+#    sleep 5
+#  done
+#else
+#  echo "$(date) - SLURM host not found, skipping"
+#fi
 
 if [ "$@" = "bash" ]; then
   exec /bin/bash
@@ -95,6 +83,10 @@ elif [ "$1" = "unittest" ]; then
   cd /usr/local/airflow/src
   pip install -e .[devel,postgres,hive] || exit 1
   ./run_unit_tests.sh $TESTCASE -s --logging-level=DEBUG
+elif [ "$@" = "slurm-master" ]; then
+  slurmd -D -vvvvv &
+  sleep 2
+  slurmctld -D -vvvvv
 else
   runuser -u airflow $CMD "$@"
 fi
