@@ -88,6 +88,13 @@ fi
 
 if [ "$@" = "bash" ]; then
   exec /bin/bash
+elif [ "$1" = "unittest" ]; then
+  shift
+  TESTCASE="$@"
+  [[ -z $TESTCASE ]] && TESTCASE="tests.core:CoreTest"
+  cd /usr/local/airflow/src
+  pip install -e .[devel,postgres,hive] || exit 1
+  ./run_unit_tests.sh $TESTCASE -s --logging-level=DEBUG
 else
   runuser -u airflow $CMD "$@"
 fi
