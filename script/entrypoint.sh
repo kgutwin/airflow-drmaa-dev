@@ -31,14 +31,14 @@ mysql_ready() {
   if ! nc $MYSQL_HOST $MYSQL_PORT >/dev/null 2>&1 </dev/null; then
       return 1
   fi
-  [ "$@" = "webserver" ] && return 0
+  [ "$1" = "webserver" ] && return 0
   mysql -h $MYSQL_HOST -P $MYSQL_PORT -u $MYSQL_USER -p$MYSQL_PASSWORD \
 	-D $MYSQL_DATABASE \
 	-e 'SHOW TABLES;' | grep -q 'dag_run'
 }
 
 # wait for DB
-if [ "$@" = "webserver" ] || [ "$@" = "worker" ] || [ "$@" = "scheduler" ] ; then
+if [ "$1" = "webserver" ] || [ "$1" = "worker" ] || [ "$1" = "scheduler" ] ; then
   i=0
   while ! mysql_ready "$@"; do
     i=`expr $i + 1`
@@ -49,7 +49,7 @@ if [ "$@" = "webserver" ] || [ "$@" = "worker" ] || [ "$@" = "scheduler" ] ; the
     echo "$(date) - waiting for ${MYSQL_HOST}:${MYSQL_PORT}... $i/$TRY_LOOP"
     sleep 5
   done
-  if [ "$@" = "webserver" ]; then
+  if [ "$1" = "webserver" ]; then
     echo "Initialize database..."
     $CMD initdb
     echo "Install smoke test DAG..."
@@ -74,7 +74,7 @@ fi
 #  echo "$(date) - SLURM host not found, skipping"
 #fi
 
-if [ "$@" = "bash" ]; then
+if [ "$1" = "bash" ]; then
   exec /bin/bash
 elif [ "$1" = "unittest" ]; then
   shift
@@ -82,8 +82,12 @@ elif [ "$1" = "unittest" ]; then
   [[ -z $TESTCASE ]] && TESTCASE="tests.core:CoreTest"
   cd /usr/local/airflow/src
   pip install -e .[devel,postgres,hive] || exit 1
-  ./run_unit_tests.sh $TESTCASE -s --logging-level=DEBUG
-elif [ "$@" = "slurm-master" ]; then
+  if [[ $TESTCASE = "interactive" ]]; then
+    exec /bin/bash
+  else
+    ./run_unit_tests.sh $TESTCASE -s --logging-level=DEBUG
+  fi
+elif [ "$1" = "slurm-master" ]; then
   slurmd -D -vvvvv &
   sleep 2
   slurmctld -D -vvvvv
